@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { VietnameseTextNormalizer } from '@/lib/vietnamese-normalizer';
-import { Languages, Copy, Check, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Languages, Copy, Check, X, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import Image from 'next/image';
 
 let aiInstance: GoogleGenAI | null = null;
@@ -36,23 +36,47 @@ export default function SpellingChecker() {
   const [manualCorrection, setManualCorrection] = useState('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [dictSize, setDictSize] = useState<number | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [currentModelIdx, setCurrentModelIdx] = useState(0);
+
+  // Load saved model index on mount
+  useEffect(() => {
+    const savedIdx = localStorage.getItem('gemini_model_idx');
+    if (savedIdx !== null) {
+      setCurrentModelIdx(parseInt(savedIdx, 10));
+    }
+  }, []);
 
   const generateWithFallback = async (ai: GoogleGenAI, params: any) => {
     let lastError: any = null;
+    let startIdx = currentModelIdx;
+    
     for (let i = 0; i < GEMINI_MODELS.length; i++) {
-      const model = GEMINI_MODELS[i];
+      // Calculate index with wrap-around starting from currentModelIdx
+      const idx = (startIdx + i) % GEMINI_MODELS.length;
+      const model = GEMINI_MODELS[idx];
+      
       try {
-        return await ai.models.generateContent({
+        const result = await ai.models.generateContent({
           ...params,
           model: model
         });
+        
+        // If we switched model, save the new successful index
+        if (idx !== currentModelIdx) {
+          setCurrentModelIdx(idx);
+          localStorage.setItem('gemini_model_idx', idx.toString());
+        }
+        
+        return result;
       } catch (err: any) {
         console.warn(`Model ${model} failed, trying next...`, err);
         lastError = err;
         
         // Notify user about the fallback if there are more models to try
         if (i < GEMINI_MODELS.length - 1) {
-          const nextModel = GEMINI_MODELS[i+1];
+          const nextIdx = (startIdx + i + 1) % GEMINI_MODELS.length;
+          const nextModel = GEMINI_MODELS[nextIdx];
           showToast(`Model ${model} quá tải, đang chuyển sang ${nextModel}...`, 'error');
         }
       }
@@ -82,6 +106,18 @@ export default function SpellingChecker() {
     window.addEventListener('error-selected', handleEvent);
     return () => window.removeEventListener('error-selected', handleEvent);
   }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -752,6 +788,17 @@ Trả lại toàn bộ văn bản gốc, trong đó:
           )}
         </div>
       )}
+
+      {/* Back to Top Button */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-8 right-8 p-4 bg-indigo-600 text-white rounded-2xl shadow-2xl transition-all duration-300 z-[90] hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 ${
+          showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
+        }`}
+        title="Quay lại đầu trang"
+      >
+        <ArrowUp className="w-6 h-6" />
+      </button>
     </div>
   );
 }
