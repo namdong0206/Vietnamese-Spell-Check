@@ -92,6 +92,65 @@ export default function SpellingChecker() {
     }
   };
 
+  const checkSpellingWithGemini = async (items: { wrong: string, context: string }[]) => {
+    const ai = getAi();
+    const prompt = `
+Bạn là một biên tập viên ngôn ngữ tiếng Việt chuyên nghiệp. 
+Tôi sẽ cung cấp cho bạn danh sách các từ/cụm từ mà hệ thống từ điển của tôi không nhận diện được (đang nghi ngờ là lỗi).
+Nhiệm vụ của bạn là kiểm tra từng từ trong ngữ cảnh đi kèm và xác định trạng thái của chúng.
+
+YÊU CẦU:
+1. Trạng thái "correct": Nếu từ đó hoàn toàn đúng chính tả và phù hợp ngữ cảnh.
+2. Trạng thái "incorrect": Nếu từ đó sai chính tả hoặc dùng sai từ. Bạn PHẢI cung cấp từ đúng vào phần "right".
+3. Trạng thái "unknown": Nếu đó là tên riêng quá lạ, thuật ngữ chuyên môn sâu hoặc bạn không đủ dữ liệu để khẳng định đúng/sai.
+
+DANH SÁCH CẦN KIỂM TRA:
+${items.map((item, i) => `${i + 1}. Từ: "${item.wrong}" - Ngữ cảnh: "...${item.context}..."`).join('\n')}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            results: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  wrong: { type: Type.STRING },
+                  status: { 
+                    type: Type.STRING, 
+                    enum: ["correct", "incorrect", "unknown"],
+                    description: "Trạng thái của từ: correct (đúng), incorrect (sai), unknown (không xác định)"
+                  },
+                  right: { 
+                    type: Type.STRING,
+                    description: "Từ đúng nếu status là incorrect"
+                  }
+                },
+                required: ["wrong", "status"]
+              }
+            }
+          },
+          required: ["results"]
+        }
+      }
+    });
+    
+    const resultText = response.text || "{}";
+    try {
+      return JSON.parse(resultText.trim());
+    } catch (e) {
+      const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      throw e;
+    }
+  };
+
   const handleCheckSpelling = async (scrapeData?: any) => {
     const currentData = scrapeData || data;
     if (!currentData || !currentData.blocks) return;
@@ -106,23 +165,69 @@ export default function SpellingChecker() {
         ...textBlocks.map((b: any) => b.content.replace(/<[^>]*>/g, ''))
       ].map(t => t || '');
       
-      // Batch pre-check with dictionary
+      // 1. Batch pre-check with dictionary
       const dictResponse = await fetch('/api/check-dictionary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texts: textsToCheck }),
       });
 
-      const contentType = dictResponse.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await dictResponse.text();
-        console.error('Non-JSON response from /api/check-dictionary:', text.substring(0, 200));
-        throw new Error('Lỗi kiểm tra từ điển. Vui lòng thử lại sau.');
-      }
-
       const dictData = await dictResponse.json();
       const dictResults = dictData.results || [];
       setDictSize(dictData.dictionarySize);
+
+      // 2. Identify unknown words for Gemini check
+      const unknownWordsToVerify: { wrong: string, context: string, blockIdx: number, errorIdx: number }[] = [];
+      
+      dictResults.forEach((res: any, blockIdx: number) => {
+        const originalText = textsToCheck[blockIdx];
+        res.errors.forEach((err: any, errorIdx: number) => {
+          if (err.right === '?') {
+            const startIdx = originalText.indexOf(err.wrong);
+            if (startIdx !== -1) {
+              unknownWordsToVerify.push({
+                wrong: err.wrong,
+                context: originalText.substring(Math.max(0, startIdx - 30), Math.min(originalText.length, startIdx + err.wrong.length + 30)),
+                blockIdx,
+                errorIdx
+              });
+            }
+          }
+        });
+      });
+
+      // 3. Call Gemini if there are unknown words
+      if (unknownWordsToVerify.length > 0) {
+        try {
+          // Limit to 50 words per call to avoid token limits or timeouts
+          const geminiResults = await checkSpellingWithGemini(unknownWordsToVerify.slice(0, 50));
+          
+          geminiResults.results.forEach((gRes: any) => {
+            const original = unknownWordsToVerify.find(u => u.wrong === gRes.wrong);
+            if (original) {
+              const targetBlock = dictResults[original.blockIdx];
+              const targetError = targetBlock.errors[original.errorIdx];
+              
+              if (gRes.status === 'correct') {
+                // Remove the error if Gemini says it's correct
+                targetBlock.errors[original.errorIdx] = null;
+              } else if (gRes.status === 'incorrect' && gRes.right) {
+                // Update with Gemini's suggestion
+                targetError.right = gRes.right;
+              }
+              // If 'unknown', keep as '?'
+            }
+          });
+
+          // Clean up null errors
+          dictResults.forEach((res: any) => {
+            res.errors = res.errors.filter((e: any) => e !== null);
+          });
+        } catch (geminiErr) {
+          console.error('Gemini check failed:', geminiErr);
+          // Fallback: continue with dictionary results only
+        }
+      }
 
       const markErrors = (content: string, errors: any[]) => {
         if (!errors || errors.length === 0) return content;
@@ -152,14 +257,12 @@ export default function SpellingChecker() {
         if (newBlocks[i].type === 'text') {
           const result = blockResults[textBlockIndex];
           if (result && result.errors && result.errors.length > 0) {
-            console.log(`Found ${result.errors.length} errors in block ${i}`);
             newBlocks[i] = { 
               ...newBlocks[i], 
               checkedContent: markErrors(newBlocks[i].content, result.errors),
               errors: result.errors
             };
           } else {
-            console.log(`No errors found in block ${i}`);
             newBlocks[i] = { 
               ...newBlocks[i], 
               checkedContent: newBlocks[i].content,
@@ -177,7 +280,7 @@ export default function SpellingChecker() {
         sapoErrors: sapoResult?.errors || [],
         blocks: newBlocks 
       });
-      showToast('Đã hoàn tất kiểm tra lỗi');
+      showToast('Đã hoàn tất kiểm tra lỗi (Từ điển + AI)');
     } catch (err: any) {
       setError(err.message);
       showToast(err.message, 'error');
@@ -288,7 +391,7 @@ Trả lại toàn bộ văn bản gốc, trong đó:
 * Ưu tiên phát hiện các lỗi về: bảo đảm/đảm bảo, miền Bắc/miền bắc, các tên riêng, các lỗi chính tả phổ biến.
 `;
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: `${rules}\n\n[Kiểm tra văn phong] Đoạn văn: ${text}`,
       config: { 
         responseMimeType: "application/json",
@@ -344,12 +447,8 @@ Trả lại toàn bộ văn bản gốc, trong đó:
   };
 
   const copyToClipboard = (text: string, label: string) => {
-    // Strip HTML tags for copying text
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = text;
-    const plainText = tempDiv.textContent || tempDiv.innerText || '';
-    
-    navigator.clipboard.writeText(plainText).then(() => {
+    // Copy the raw HTML content to preserve formatting (divs, classes, links)
+    navigator.clipboard.writeText(text).then(() => {
       showToast(`Đã sao chép ${label}`);
     }).catch(err => {
       console.error('Lỗi khi sao chép:', err);
@@ -392,7 +491,7 @@ Trả lại toàn bộ văn bản gốc, trong đó:
           onClick={handleScrape} 
           className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-200"
         >
-          {loading ? 'Đang xử lý...' : 'Lấy nội dung'}
+          {loading ? 'Đang xử lý...' : 'Kiểm tra chính tả'}
         </button>
         {data && checkedContent && (
           <div className="flex gap-3">
