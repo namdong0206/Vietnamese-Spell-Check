@@ -6,11 +6,33 @@ import { VietnameseTextNormalizer } from '@/lib/vietnamese-normalizer';
 
 let aiInstance: GoogleGenAI | null = null;
 
+const GEMINI_MODELS = [
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3-flash-preview',
+  'gemini-3.1-pro-preview'
+];
+
+async function generateWithFallback(ai: GoogleGenAI, params: any) {
+  let lastError: any = null;
+  for (const model of GEMINI_MODELS) {
+    try {
+      return await ai.models.generateContent({
+        ...params,
+        model: model
+      });
+    } catch (err: any) {
+      console.warn(`Model ${model} failed, trying next...`, err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Tất cả các mô hình Gemini đều không khả dụng hoặc hết hạn mức.');
+}
+
 function getAi() {
   if (!aiInstance) {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('Chưa cấu hình Gemini API Key. Vui lòng kiểm tra cài đặt Secrets.');
+      throw new Error('Chưa cấu hình Gemini API Key. Vui lòng thêm biến môi trường NEXT_PUBLIC_GEMINI_API_KEY trong cài đặt dự án (Vercel/AI Studio) và thực hiện Redeploy.');
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }
@@ -108,8 +130,7 @@ DANH SÁCH CẦN KIỂM TRA:
 ${items.map((item, i) => `${i + 1}. Từ: "${item.wrong}" - Ngữ cảnh: "...${item.context}..."`).join('\n')}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await generateWithFallback(ai, {
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
@@ -390,8 +411,7 @@ Trả lại toàn bộ văn bản gốc, trong đó:
 * Đối chiếu theo quy chuẩn văn phong báo chí tiếng Việt.
 * Ưu tiên phát hiện các lỗi về: bảo đảm/đảm bảo, miền Bắc/miền bắc, các tên riêng, các lỗi chính tả phổ biến.
 `;
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await generateWithFallback(ai, {
       contents: `${rules}\n\n[Kiểm tra văn phong] Đoạn văn: ${text}`,
       config: { 
         responseMimeType: "application/json",

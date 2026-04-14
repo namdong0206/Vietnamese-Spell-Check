@@ -121,7 +121,7 @@ export const COMMON_SYLLABLES = new Set([
 
 export function segmentWords(text: string, dict: Set<string>) {
   // Pre-tokenize by whitespace and punctuation, keeping punctuation as separate tokens
-  const tokens = text.split(/([\s,.\-!?;:()""“”‘’'\[\]{}]+)/).filter(t => t.length > 0);
+  const tokens = text.split(/([\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+)/).filter(t => t.length > 0);
   const result: string[] = [];
   
   // If dictionary is empty, just return the tokens as they are
@@ -134,7 +134,7 @@ export function segmentWords(text: string, dict: Set<string>) {
     let found = false;
     
     // Skip punctuation and whitespace for segmentation
-    if (/^[\s,.\-!?;:()""“”‘’'\[\]{}]+$/.test(tokens[i])) {
+    if (/^[\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+$/.test(tokens[i])) {
       result.push(tokens[i]);
       i++;
       continue;
@@ -149,7 +149,7 @@ export function segmentWords(text: string, dict: Set<string>) {
       for (let j = i; j < tokens.length; j++) {
         lookAhead++;
         subTokens.push(tokens[j]);
-        if (!/^[\s,.\-!?;:()"]+$/.test(tokens[j])) {
+        if (!/^[\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+$/.test(tokens[j])) {
           wordCount++;
         }
         if (wordCount === len) break;
@@ -289,9 +289,9 @@ function detectMisplacedToneMarks(text: string): { wrong: string, right: string 
   const errors: { wrong: string, right: string }[] = [];
   
   // Split by whitespace and punctuation to check individual words
-  const words = text.split(/([\s,.\-!?;:()""“”‘’'\[\]{}]+)/);
+  const words = text.split(/([\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+)/);
   for (const word of words) {
-    if (!word || /^[\s,.\-!?;:()""“”‘’'\[\]{}]+$/.test(word)) continue;
+    if (!word || /^[\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+$/.test(word)) continue;
     
     const relocated = VietnameseTextNormalizer.relocateToneMarks(word);
     if (relocated !== word) {

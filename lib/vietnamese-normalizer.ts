@@ -90,9 +90,9 @@ export class VietnameseTextNormalizer {
     const vowelRegex = new RegExp(`[${vowelChars}]`, 'gi');
     
     // Split into words to process each syllable/word
-    const words = result.split(/([\s,.\-!?;:()""“”‘’'\[\]{}]+)/);
+    const words = result.split(/([\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+)/);
     const processedWords = words.map(word => {
-      if (!word || /^[\s,.\-!?;:()""“”‘’'\[\]{}]+$/.test(word)) return word;
+      if (!word || /^[\s,.\-!?;:()""“”‘’'\[\]{}…–—«»]+$/.test(word)) return word;
       
       const vowelMatches = word.match(vowelRegex);
       if (!vowelMatches || vowelMatches.length === 0) return word;
