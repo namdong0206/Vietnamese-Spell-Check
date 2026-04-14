@@ -1,0 +1,6 @@
+{
+  "name": "Kiểm tra lỗi chính tả",
+  "description": "Ứng dụng kiểm tra lỗi chính tả và ngữ pháp tiếng Việt từ đường dẫn URL.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
