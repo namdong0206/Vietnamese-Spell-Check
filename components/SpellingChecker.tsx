@@ -3,30 +3,17 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { VietnameseTextNormalizer } from '@/lib/vietnamese-normalizer';
+import { Languages, Copy, Check, X, AlertCircle, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 let aiInstance: GoogleGenAI | null = null;
 
 const GEMINI_MODELS = [
   'gemini-3.1-flash-lite-preview',
   'gemini-3-flash-preview',
-  'gemini-3.1-pro-preview'
+  'gemini-3.1-pro-preview',
+  'gemini-2.0-flash'
 ];
-
-async function generateWithFallback(ai: GoogleGenAI, params: any) {
-  let lastError: any = null;
-  for (const model of GEMINI_MODELS) {
-    try {
-      return await ai.models.generateContent({
-        ...params,
-        model: model
-      });
-    } catch (err: any) {
-      console.warn(`Model ${model} failed, trying next...`, err);
-      lastError = err;
-    }
-  }
-  throw lastError || new Error('Tất cả các mô hình Gemini đều không khả dụng hoặc hết hạn mức.');
-}
 
 function getAi() {
   if (!aiInstance) {
@@ -49,6 +36,29 @@ export default function SpellingChecker() {
   const [manualCorrection, setManualCorrection] = useState('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [dictSize, setDictSize] = useState<number | null>(null);
+
+  const generateWithFallback = async (ai: GoogleGenAI, params: any) => {
+    let lastError: any = null;
+    for (let i = 0; i < GEMINI_MODELS.length; i++) {
+      const model = GEMINI_MODELS[i];
+      try {
+        return await ai.models.generateContent({
+          ...params,
+          model: model
+        });
+      } catch (err: any) {
+        console.warn(`Model ${model} failed, trying next...`, err);
+        lastError = err;
+        
+        // Notify user about the fallback if there are more models to try
+        if (i < GEMINI_MODELS.length - 1) {
+          const nextModel = GEMINI_MODELS[i+1];
+          showToast(`Model ${model} quá tải, đang chuyển sang ${nextModel}...`, 'error');
+        }
+      }
+    }
+    throw lastError || new Error('Tất cả các mô hình Gemini đều không khả dụng hoặc hết hạn mức.');
+  };
 
   useEffect(() => {
     if (toast) {
@@ -494,9 +504,22 @@ Trả lại toàn bộ văn bản gốc, trong đó:
         </div>
       )}
 
-      <div className="mb-8">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Kiểm tra lỗi chính tả</h1>
-        <p className="text-slate-500">Dán URL bài viết để bắt đầu kiểm tra ngữ pháp và chính tả.</p>
+      <div className="mb-8 flex items-center gap-6">
+        <div className="relative w-24 h-24 shrink-0 bg-indigo-50 rounded-2xl flex items-center justify-center overflow-hidden border border-indigo-100 shadow-inner">
+          {/* Placeholder for the logo provided by user */}
+          <Image 
+            src="https://picsum.photos/seed/vietnam-news/200/200" 
+            alt="Logo" 
+            fill
+            className="object-cover opacity-20"
+            referrerPolicy="no-referrer"
+          />
+          <Languages className="w-10 h-10 text-indigo-600 relative z-10" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Kiểm tra lỗi chính tả</h1>
+          <p className="text-slate-500 max-w-lg">Dán URL bài viết từ các trang báo chính thống để bắt đầu kiểm tra ngữ pháp và chính tả tự động.</p>
+        </div>
       </div>
       
       <div className="flex gap-3 mb-8">
@@ -559,9 +582,11 @@ Trả lại toàn bộ văn bản gốc, trong đó:
             {/* Cover image (Avatar) displayed here, right below the title */}
             {data.avatar && (
               <div className="mb-8 group relative">
-                <img 
+                <Image 
                   src={data.avatar.src} 
-                  alt={data.avatar.caption} 
+                  alt={data.avatar.caption || 'Avatar'} 
+                  width={800}
+                  height={450}
                   className="w-full h-auto rounded-2xl shadow-xl border border-slate-100" 
                   referrerPolicy="no-referrer"
                 />
@@ -636,9 +661,11 @@ Trả lại toàn bộ văn bản gốc, trong đó:
                 ) : (
                   <div className="flex flex-col items-center">
                     <div className="relative w-full">
-                      <img 
+                      <Image 
                         src={block.src} 
-                        alt={block.caption} 
+                        alt={block.caption || 'Article image'} 
+                        width={800}
+                        height={450}
                         className="w-full h-auto rounded-2xl shadow-md" 
                         referrerPolicy="no-referrer"
                       />

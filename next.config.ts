@@ -14,9 +14,67 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**', // This allows any path under the hostname
       },
+      {
+        protocol: 'https',
+        hostname: 'nhandan.vn',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.nhandan.vn',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-giaitri.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn1-giaitri.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-kinhdoanh.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-thethao.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-dulich.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-suckhoe.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-doisong.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-khoahoc.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-sohoa.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vcdn-vnexpress.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.vnecdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.vietnamplus.vn',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.chinhphu.vn',
+      }
     ],
   },
   output: 'standalone',
