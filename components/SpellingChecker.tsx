@@ -554,7 +554,7 @@ Trả lại toàn bộ văn bản gốc, trong đó:
         </div>
         <div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Kiểm tra lỗi chính tả</h1>
-          <p className="text-slate-500 max-w-lg">Dán URL bài viết từ các trang báo chính thống để bắt đầu kiểm tra ngữ pháp và chính tả tự động.</p>
+          <p className="text-slate-500 max-w-lg">Dán URL bài viết từ trang Preview của CMS hoặc từ trang báo Nhân Dân để bắt đầu kiểm tra ngữ pháp và chính tả tự động.</p>
         </div>
       </div>
       
@@ -606,13 +606,6 @@ Trả lại toàn bộ văn bản gốc, trong đó:
               <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight flex-1">
                 <div dangerouslySetInnerHTML={{ __html: checkedContent?.title ? renderTextHtml(checkedContent.title) : data.title }} />
               </h1>
-              <button 
-                onClick={() => copyToClipboard(checkedContent?.title || data.title, 'Tiêu đề')}
-                className="ml-4 p-2 text-slate-400 hover:text-indigo-600 transition-colors"
-                title="Sao chép tiêu đề"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              </button>
             </div>
             
             {/* Cover image (Avatar) displayed here, right below the title */}
@@ -629,13 +622,6 @@ Trả lại toàn bộ văn bản gốc, trong đó:
                 {data.avatar.caption && (
                   <p className="text-sm text-slate-500 italic mt-3 text-center px-4 font-medium">{data.avatar.caption}</p>
                 )}
-                <button 
-                  onClick={() => copyToClipboard(data.avatar.src, 'Link ảnh đại diện')}
-                  className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur shadow-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Sao chép link ảnh"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                </button>
               </div>
             )}
             
@@ -643,13 +629,6 @@ Trả lại toàn bộ văn bản gốc, trong đó:
               <div className="text-lg text-slate-700 font-medium leading-relaxed flex-1">
                 <div dangerouslySetInnerHTML={{ __html: checkedContent?.sapo ? renderTextHtml(checkedContent.sapo) : data.sapo }} />
               </div>
-              <button 
-                onClick={() => copyToClipboard(checkedContent?.sapo || data.sapo, 'Sapo')}
-                className="ml-4 p-2 text-slate-400 hover:text-indigo-600 transition-colors"
-                title="Sao chép sapo"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              </button>
             </div>
             <p className="text-sm text-slate-400 font-medium">Tác giả: <span className="text-slate-600">{data.author}</span></p>
           </div>
@@ -705,13 +684,6 @@ Trả lại toàn bộ văn bản gốc, trong đó:
                         className="w-full h-auto rounded-2xl shadow-md" 
                         referrerPolicy="no-referrer"
                       />
-                      <button 
-                        onClick={() => copyToClipboard(block.src, 'Link ảnh')}
-                        className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur shadow-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Sao chép link ảnh"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                      </button>
                     </div>
                     {block.caption && (
                       <p className="text-sm text-slate-500 italic mt-3 text-center px-4 max-w-2xl">{block.caption}</p>
