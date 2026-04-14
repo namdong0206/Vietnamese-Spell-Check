@@ -4,7 +4,18 @@ import { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { VietnameseTextNormalizer } from '@/lib/vietnamese-normalizer';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAi() {
+  if (!aiInstance) {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('Chưa cấu hình Gemini API Key. Vui lòng kiểm tra cài đặt Secrets.');
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 export default function SpellingChecker() {
   const [url, setUrl] = useState('');
@@ -252,6 +263,7 @@ export default function SpellingChecker() {
   };
 
   const checkSpelling = async (text: string) => {
+    const ai = getAi();
     const rules = `
 #NGỮ CẢNH
 Bạn là một biên tập viên kỳ cựu của một tòa soạn báo chí chính thống (như Báo Nhân Dân), có nhiệm vụ rà soát lỗi trong văn bản theo đúng quy chuẩn về chính tả và văn phong báo chí tiếng Việt.
